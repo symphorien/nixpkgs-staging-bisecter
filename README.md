@@ -41,6 +41,7 @@ It will pick a commit that ensures that if you build
 `nixos-rebuild build-vm -I nixos-config=temp/vm.nix -I nixpkgs=. --fast -j2`,
 the expected number of rebuilds left for the remainder of the bisection is
 minimal, assuming the bug is uniformly distributed among possible commits.
+(Actually the number of remaining builds is approximated, and that's only a rough estimation for build time, but it still seems useful).
 
 The first run will run the specified nix-build command with `--dry-build` on all commits in the
 git bisect range to determine rebuild counts, so this will be very slow, but
