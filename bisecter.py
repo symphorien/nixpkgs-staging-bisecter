@@ -8,7 +8,7 @@ from ast import literal_eval
 from typing import Optional, Set
 from contextlib import contextmanager
 from tempfile import TemporaryDirectory
-from functools import reduce
+from functools import reduce, cache
 import os
 import argparse
 
@@ -44,9 +44,14 @@ def is_built(drv: str) -> bool:
     return False
 
 
+@cache
+def get_git_folder() -> Path:
+    path = run(["git", "rev-parse", "--git-dir"], verbose=False, stdout=subprocess.PIPE).stdout.decode("utf8", errors="ignore")
+    return Path(path.strip()).resolve()
+
 def get_good_refs() -> list[str]:
     """returns all references in the form refs/bisect/good-*"""
-    repo = Path(".git")
+    repo = get_git_folder()
     return [str(i.relative_to(repo)) for i in (repo / "refs" / "bisect").glob("good-*")]
 
 
@@ -62,6 +67,7 @@ def git_rev_parse(rev: str) -> str:
 def get_bisect_commits(bad: str, goods: list[str]) -> list[str]:
     """returns all commits that git bisect may visit if refs/bisect/bad is `bad` and refs/bisect-good* are `goods`, as commit hashes"""
     bad = git_rev_parse(bad)
+    assert len(goods) >= 1
     out = run(
         ["git", "log", "--pretty=oneline", bad, "--not"] + goods,
         verbose=False,
