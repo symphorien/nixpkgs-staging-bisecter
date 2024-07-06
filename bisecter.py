@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 
+# SPDX-FileCopyrightText: 2024 Guillaume Girol <symphorien_bug@xlumurb.eu>
+#
+# SPDX-License-Identifier: MIT
+
 import subprocess
 import re
 import hashlib

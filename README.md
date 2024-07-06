@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2024 Guillaume Girol <symphorien_bug@xlumurb.eu>
+
+SPDX-License-Identifier: MIT
+-->
+
 # nixpkgs-staging-bisecter
 
 `git bisect` is designed to find the commit introducing a regression within a
