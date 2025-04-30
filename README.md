@@ -12,7 +12,7 @@ in nixpkgs as long as everything is in the cache. However, `git bisect` sometime
 picks a commit introducing a mass rebuild.
 
 One strategy is to override git's pick by choosing a nearby commit built by
-hydra, see [hydrasect](https://git.qyliss.net/hydrasect/about/) for example.
+hydra, ~see [hydrasect](https://git.qyliss.net/hydrasect/about/) for example~ (apparently [broken](https://github.com/NixOS/nixpkgs/issues/323985#issuecomment-2210893775)).
 But at some point, you may end up bisecting inside a large range of commits
 that where not built by hydra, for example staging. `nixpkgs-staging-bisecter`
 is designed to spend some time choosing a better commit than `git bisect` by
