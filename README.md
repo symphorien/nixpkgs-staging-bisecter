@@ -59,3 +59,16 @@ If you change the behavior of the command during the bisection (in my example by
 
 `./bisecter.py` is just a python script with no dependencies.
 
+## Usage with hydrasect
+
+To best reduce build times, one may combine `nixpkgs-staging-bisecter` with tools like `hydrasect` to prioritize cached commits, if available.
+In such a set-up, selecting and checking out the next commit might look as follows:
+
+```sh
+cached_commits="$(hydrasect 2>/dev/null)"
+if [[ "$?" -eq 0 ]]; then
+    git checkout "$(echo "${cached_commits}" | head -1)"
+else
+    bisecter.py --checkout nix-build ...
+fi
+```
