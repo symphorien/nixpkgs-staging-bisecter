@@ -15,6 +15,10 @@ from tempfile import TemporaryDirectory
 from functools import reduce, cache
 import os
 import argparse
+import sys
+
+def warn(msg: str) -> None:
+    print(f"\033[0;33m{msg}\033[0m", file=sys.stderr)
 
 
 def run(cmd: list[str], verbose: bool=True, text: Literal[False]=False, **kwargs) -> subprocess.CompletedProcess[bytes]:
@@ -126,16 +130,24 @@ def write_cache_for(hash: str, value: str):
 drv_re = re.compile(r"/nix/store/[^/ ]*\.drv")
 
 
-def get_drvs_inner(commit: str, cmd: list[str]) -> set[str]:
-    """check-out this commit, and runs this command with --dry-run and parses all drvs that would be built"""
+def get_drvs_inner(commit: str, cmd: list[str]) -> set[str] | None:
+    """check-out this commit, and runs this command with --dry-run and parses all drvs that would be built
+
+    returns None if the command fails (for example an evaluation error)"""
     run(["git", "checkout", commit])
-    out = run(cmd + ["--dry-run"], stderr=subprocess.PIPE).stderr.decode(
-        "utf8", errors="ignore"
-    )
-    return set(drv_re.findall(out))
+    try:
+        out = run(cmd + ["--dry-run"], stderr=subprocess.PIPE).stderr.decode(
+            "utf8", errors="ignore"
+        )
+        return set(drv_re.findall(out))
+    except subprocess.CalledProcessError as e:
+        warn(f"Cannot determine rebuild amount for commit {commit}: {e}")
+        warn(f"Assuming you intended to `git bisect skip {commit}`")
+        return None
 
 
-def get_drvs(commit: str, cmd: list[str]) -> set[str]:
+
+def get_drvs(commit: str, cmd: list[str]) -> set[str] | None:
     """check-out this commit, and runs this command with --dry-run and parses all drvs that would be built
 
     memoized
@@ -147,7 +159,7 @@ def get_drvs(commit: str, cmd: list[str]) -> set[str]:
     else:
         v = get_drvs_inner(commit, cmd)
         write_cache_for(h, repr(v))
-    return {drv for drv in v if not is_built(drv)}
+    return {drv for drv in v if not is_built(drv)} if v is not None else None
 
 
 @contextmanager
@@ -209,12 +221,21 @@ if __name__ == "__main__":
     print("found", n, "commits")
     rebuilds = {}
     with worktree():
-        for commit in commits:
-            rebuilds[commit] = get_drvs(commit, args.cmd)
+        for commit in commits.copy():
+            rebuilds_for_this_commit = get_drvs(commit, args.cmd)
+            if rebuilds_for_this_commit is not None:
+                rebuilds[commit] = rebuilds_for_this_commit
+            else:
+                # this commit will be git bisect skipped
+                commits.remove(commit)
+    if not rebuilds:
+        warn(f"The provided command failed for all candidate commits, aborting")
+        exit(1)
     weights = []
     for commit in commits:
-        candidates_if_good = get_bisect_commits(bad=bad, goods=goods + [commit])
-        candidates_if_bad = get_bisect_commits(bad=commit, goods=goods)
+        # & set commit is to remove skipped commmits
+        candidates_if_good = set(get_bisect_commits(bad=bad, goods=goods + [commit])) & set(commits)
+        candidates_if_bad = set(get_bisect_commits(bad=commit, goods=goods)) & set(commits)
         rebuilds_if_good = len(
             reduce(lambda a, b: a | b, (rebuilds[i] for i in candidates_if_good), set())
             - rebuilds[commit]
