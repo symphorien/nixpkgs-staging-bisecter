@@ -9,7 +9,7 @@ import re
 import hashlib
 from pathlib import Path
 from ast import literal_eval
-from typing import Optional, Set
+from typing import Literal
 from contextlib import contextmanager
 from tempfile import TemporaryDirectory
 from functools import reduce, cache
@@ -17,11 +17,11 @@ import os
 import argparse
 
 
-def run(cmd: list[str], verbose=True, **kwargs) -> subprocess.CompletedProcess:
+def run(cmd: list[str], verbose: bool=True, text: Literal[False]=False, **kwargs) -> subprocess.CompletedProcess[bytes]:
     """wrapper around subprocess.run that prints the command if verbose=True and fails if command fails"""
     if verbose:
         print("Running", " ".join(cmd))
-    return subprocess.run(cmd, check=True, **kwargs)
+    return subprocess.run(cmd, check=True, text=text, **kwargs)
 
 
 def get_outputs(drv: str) -> list[str]:
@@ -107,7 +107,7 @@ def cache_file_for(hash: str) -> Path:
     return f
 
 
-def cache_for(hash: str) -> Optional[str]:
+def cache_for(hash: str) -> str | None:
     """returns the value cached for this hash, if any"""
     f = cache_file_for(hash)
     if f.exists():
@@ -126,7 +126,7 @@ def write_cache_for(hash: str, value: str):
 drv_re = re.compile(r"/nix/store/[^/ ]*\.drv")
 
 
-def get_drvs_inner(commit: str, cmd: list[str]) -> Set[str]:
+def get_drvs_inner(commit: str, cmd: list[str]) -> set[str]:
     """check-out this commit, and runs this command with --dry-run and parses all drvs that would be built"""
     run(["git", "checkout", commit])
     out = run(cmd + ["--dry-run"], stderr=subprocess.PIPE).stderr.decode(
@@ -135,7 +135,7 @@ def get_drvs_inner(commit: str, cmd: list[str]) -> Set[str]:
     return set(drv_re.findall(out))
 
 
-def get_drvs(commit: str, cmd: list[str]) -> Set[str]:
+def get_drvs(commit: str, cmd: list[str]) -> set[str]:
     """check-out this commit, and runs this command with --dry-run and parses all drvs that would be built
 
     memoized
