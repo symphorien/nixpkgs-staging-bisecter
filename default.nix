@@ -5,7 +5,8 @@ let
   pkgs = import nixpkgs { };
 in
 rec {
-  package = pkgs.callPackage ./package.nix { };
+  nixpkgs-staging-bisecter = pkgs.callPackage ./package.nix { };
+  package = nixpkgs-staging-bisecter;
   devShell = pkgs.mkShell {
     packages = [
       package
